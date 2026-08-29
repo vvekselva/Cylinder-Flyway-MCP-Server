@@ -1,0 +1,11 @@
+
+
+ALTER TABLE public.tbl_supplier_refill_collection DROP CONSTRAINT tbl_supplier_refill_collection_number_unique;
+
+
+ALTER TABLE public.tbl_vehicle_trip_stop ADD fk_supplier_trip int8 NULL;
+ALTER TABLE public.tbl_vehicle_trip_stop ADD fk_supplier_refill_collection int8 NULL;
+ALTER TABLE public.tbl_vehicle_trip_stop ADD fk_empty_pickup int8 NULL;
+ALTER TABLE public.tbl_vehicle_trip_stop ADD CONSTRAINT tbl_vehicle_trip_stop_tbl_supplier_trip_fk FOREIGN KEY (fk_supplier_trip) REFERENCES public.tbl_supplier_trip(pk_supplier_trip_id);
+ALTER TABLE public.tbl_vehicle_trip_stop ADD CONSTRAINT tbl_vehicle_trip_stop_tbl_supplier_refill_collection_fk FOREIGN KEY (fk_supplier_refill_collection) REFERENCES public.tbl_supplier_refill_collection(pk_collection_id);
+ALTER TABLE public.tbl_vehicle_trip_stop ADD CONSTRAINT tbl_vehicle_trip_stop_tbl_empty_pickup_fk FOREIGN KEY (fk_empty_pickup) REFERENCES public.tbl_empty_pickup(pk_pickup_id);
