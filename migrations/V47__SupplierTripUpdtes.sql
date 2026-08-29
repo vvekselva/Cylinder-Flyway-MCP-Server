@@ -1,0 +1,2 @@
+--DROP TABLE public.tbl_supplier_trip_line;
+--DROP TABLE public.tbl_supplier_trip;
