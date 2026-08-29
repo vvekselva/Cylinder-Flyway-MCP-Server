@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: cylinder-flyway-mcp-phase0
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PLATFORM
+        value: RENDER
+      - key: DB_URL
+        value: jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres?sslmode=require
+      - key: DB_USER
+        value: postgres.xipkywwvzvrwcqnkifuv
+      - key: MIGRATION_DIR
+        value: /app/migrations
+      - key: DB_PASSWORD
+        sync: false
+      - key: QUAL_TOKEN
+        sync: false
