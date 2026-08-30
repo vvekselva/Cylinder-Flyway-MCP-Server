@@ -40,7 +40,7 @@ COPY migrations /app/migrations
 # RUNTIME CONFIGURATION
 # ============================================================
 
-ENV MIGRATION_DIR=/app/migrations
+ENV MIGRATION_DIR=src/main/resources/db/migration
 ENV PLATFORM=RENDER
 
 # Render supplies PORT dynamically.
