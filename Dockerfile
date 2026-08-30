@@ -1,54 +1,36 @@
 # syntax=docker/dockerfile:1
 
-# ============================================================
-# STAGE 1: BUILD JAVA 21 APPLICATION AND RUNTIME DEPENDENCIES
-# ============================================================
-
+# Build the Phase-1 Java service.
 FROM maven:3.9-eclipse-temurin-21 AS build
-
 WORKDIR /build
 
-COPY pom.xml .
+COPY phase1-testcontainers/pom.xml ./pom.xml
 RUN mvn -q -DskipTests dependency:go-offline
 
-COPY src ./src
+COPY phase1-testcontainers/src ./src
+RUN mvn -q clean package -DskipTests
 
-# Keep dependencies as separate JARs. This preserves each library's
-# package Implementation-Version used by the Phase-0 qualification gates.
-RUN mvn -q clean package -DskipTests \
-    && mvn -q dependency:copy-dependencies \
-       -DincludeScope=runtime \
-       -DoutputDirectory=target/lib
-
-
-# ============================================================
-# STAGE 2: JAVA 21 RUNTIME
-# ============================================================
-
+# Runtime.
 FROM eclipse-temurin:21-jre
-
 WORKDIR /app
 
-COPY --from=build /build/target/app.jar /app/app.jar
+COPY --from=build /build/target/phase1-app.jar /app/phase1-app.jar
 COPY --from=build /build/target/lib /app/lib
 
-# Copy the complete governed Flyway SQL migration set.
+# Freeze the exact governed migration source into this validator image.
 COPY migrations /app/migrations
 
-# Fail closed during image creation if migrations were not copied.
+# Fail the image build if the governed source is missing.
 RUN test -d /app/migrations \
     && test "$(find /app/migrations -type f -name '*.sql' | wc -l)" -gt 0
 
-
-# ============================================================
-# RUNTIME CONFIGURATION
-# ============================================================
-
+ENV PORT=8081
 ENV MIGRATION_DIR=/app/migrations
-ENV PLATFORM=RENDER
+ENV DATABASE_WRITES=1
+ENV DB_WRITE_PARALLELISM=1
+ENV MIGRATION_BATCH_SIZE=1
+ENV TESTCONTAINERS_POSTGRES_IMAGE=postgres:17.6
 
-EXPOSE 8080
+EXPOSE 8081
 
-# Run the application with its dependency JARs separately so Flyway and
-# PostgreSQL retain their own package metadata. Phase-0 remains zero-write.
-ENTRYPOINT ["java", "-cp", "/app/app.jar:/app/lib/*", "com.cylindermanagement.mcp.QualificationServer"]
+ENTRYPOINT ["java", "-cp", "/app/phase1-app.jar:/app/lib/*", "com.cylindermanagement.mcp.Phase1TestcontainersServer"]
