@@ -1,19 +1,36 @@
 services:
   - type: web
-    name: cylinder-flyway-mcp-phase0
+    name: cylinder-flyway-mcp-phase1
     runtime: docker
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
+
     envVars:
       - key: PLATFORM
         value: RENDER
-      - key: DB_URL
-        value: jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres?sslmode=require
-      - key: DB_USER
-        value: postgres.xipkywwvzvrwcqnkifuv
+
       - key: MIGRATION_DIR
         value: /app/migrations
-      - key: DB_PASSWORD
+
+      - key: DATABASE_WRITES
+        value: "1"
+
+      - key: DB_WRITE_PARALLELISM
+        value: "1"
+
+      - key: MIGRATION_BATCH_SIZE
+        value: "1"
+
+      - key: TESTCONTAINERS_POSTGRES_IMAGE
+        value: postgres:17.6
+
+      - key: TC_CLOUD_CONCURRENCY
+        value: "1"
+
+      # Phase-1 API authentication secret.
+      - key: MCP_AUTH_TOKEN
         sync: false
-      - key: QUAL_TOKEN
+
+      # Testcontainers Cloud service-account token.
+      - key: TC_CLOUD_TOKEN
         sync: false
