@@ -1,23 +1,24 @@
 # syntax=docker/dockerfile:1
 
 # ============================================================
-# STAGE 1: BUILD JAVA 21 APPLICATION WITH MAVEN
+# STAGE 1: BUILD JAVA 21 APPLICATION AND RUNTIME DEPENDENCIES
 # ============================================================
 
 FROM maven:3.9-eclipse-temurin-21 AS build
 
 WORKDIR /build
 
-# Copy Maven configuration first for dependency caching
 COPY pom.xml .
-
 RUN mvn -q -DskipTests dependency:go-offline
 
-# Copy Java source
 COPY src ./src
 
-# Build the shaded / fat JAR
-RUN mvn -q clean package -DskipTests
+# Keep dependencies as separate JARs. This preserves each library's
+# package Implementation-Version used by the Phase-0 qualification gates.
+RUN mvn -q clean package -DskipTests \
+    && mvn -q dependency:copy-dependencies \
+       -DincludeScope=runtime \
+       -DoutputDirectory=target/lib
 
 
 # ============================================================
@@ -28,28 +29,26 @@ FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-# Copy runnable application
 COPY --from=build /build/target/app.jar /app/app.jar
+COPY --from=build /build/target/lib /app/lib
 
-# Copy the complete governed Flyway SQL migration set
-# Expected: 168 SQL files, V1-V170 with V116 and V157 absent
+# Copy the complete governed Flyway SQL migration set.
 COPY migrations /app/migrations
+
+# Fail closed during image creation if migrations were not copied.
+RUN test -d /app/migrations \
+    && test "$(find /app/migrations -type f -name '*.sql' | wc -l)" -gt 0
 
 
 # ============================================================
 # RUNTIME CONFIGURATION
 # ============================================================
 
-ENV MIGRATION_DIR=src/main/resources/db/migration
+ENV MIGRATION_DIR=/app/migrations
 ENV PLATFORM=RENDER
 
-# Render supplies PORT dynamically.
-# QualificationServer defaults to 8080 when PORT is absent.
 EXPOSE 8080
 
-
-# ============================================================
-# START ZERO-WRITE PHASE-0 QUALIFICATION SERVER
-# ============================================================
-
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+# Run the application with its dependency JARs separately so Flyway and
+# PostgreSQL retain their own package metadata. Phase-0 remains zero-write.
+ENTRYPOINT ["java", "-cp", "/app/app.jar:/app/lib/*", "com.cylindermanagement.mcp.QualificationServer"]
