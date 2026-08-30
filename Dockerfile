@@ -40,10 +40,10 @@ COPY --from=build /build/target/lib /app/lib
 # GOVERNED FLYWAY MIGRATION SOURCE
 # ============================================================
 
-# Copy the complete governed migration set from the repository root.
+# Copy the complete governed Flyway migration set.
 COPY migrations /app/migrations
 
-# Fail closed during image creation if migrations were not copied.
+# Fail closed if migrations are missing.
 RUN test -d /app/migrations \
     && test "$(find /app/migrations -type f -name '*.sql' | wc -l)" -gt 0
 
@@ -52,19 +52,18 @@ RUN test -d /app/migrations \
 # PHASE-1 RUNTIME CONFIGURATION
 # ============================================================
 
-# Render supplies PORT at runtime when configured.
-# 8081 is the local/default value used by Phase-1.
+# Local/default Phase-1 service port.
 ENV PORT=8081
 
-# Governed migration location inside the image.
+# Location of the governed migration files.
 ENV MIGRATION_DIR=/app/migrations
 
-# BL-008 write governance.
+# BL-008 migration-write governance.
 ENV DATABASE_WRITES=1
 ENV DB_WRITE_PARALLELISM=1
 ENV MIGRATION_BATCH_SIZE=1
 
-# PostgreSQL version aligned with the Supabase test target.
+# PostgreSQL version matching the Supabase validation target.
 ENV TESTCONTAINERS_POSTGRES_IMAGE=postgres:17.6
 
 
@@ -79,9 +78,4 @@ EXPOSE 8081
 # START PHASE-1 TESTCONTAINERS SERVER
 # ============================================================
 
-ENTRYPOINT [
-    "java",
-    "-cp",
-    "/app/phase1-app.jar:/app/lib/*",
-    "com.cylindermanagement.mcp.Phase1TestcontainersServer"
-]
+ENTRYPOINT ["java", "-cp", "/app/phase1-app.jar:/app/lib/*", "com.cylindermanagement.mcp.Phase1TestcontainersServer"]
